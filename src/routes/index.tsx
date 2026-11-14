@@ -1,23 +1,33 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { ToastProvider } from "@/features/together-tube/components/toast";
+import { TogetherTubeDemo } from "@/features/together-tube/demo/TogetherTubeDemo";
 
-// The home route ships no og:image, so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
 export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "TogetherTube — Watch YouTube together, in sync" },
+      {
+        name: "description",
+        content:
+          "TogetherTube is a Chrome extension for private YouTube watch parties with host-controlled, synchronized playback.",
+      },
+      { property: "og:title", content: "TogetherTube — Watch YouTube together, in sync" },
+      {
+        property: "og:description",
+        content:
+          "Create a private room, share an invite, and watch YouTube in perfect sync with friends.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
   component: Index,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
 function Index() {
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
+    <ToastProvider>
+      <TogetherTubeDemo />
+    </ToastProvider>
   );
 }

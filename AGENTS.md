@@ -28,3 +28,10 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+## Project rules
+
+- TogetherTube UI lives in `src/features/together-tube/`; screens talk only to the `RoomService` interface and `RoomEvent`s, so the mock service can be swapped for a Socket.IO/service-worker client without touching UI.
+- `TogetherTubePopup` is container-agnostic (`variant="popup" | "panel"`); everything under `demo/` (fake Chrome toolbar, YouTube backdrop, prototype controls) is preview-only and must not ship in the extension build.
+- Modals, menus and toasts render inside the popup frame (no body portals) because the extension viewport is the popup itself.
+- Do not label mock behaviour as real sync; simulated events go through `actions.emit` so they match future server events.
