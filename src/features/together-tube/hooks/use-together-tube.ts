@@ -2,9 +2,10 @@ import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 import { currentPosition } from "../lib/playback";
 import { SELF_ID } from "../mock/data";
 import type { CreateRoomInput, RoomService } from "../services/room-service";
-import type { ConnectionState, PlaybackState, Room, RoomEvent, Screen } from "../types";
+import type { ChatMessage, ConnectionState, PlaybackState, Room, RoomEvent, Screen } from "../types";
 
 export type EndReason = "you_ended" | "you_left" | "host_ended";
+export type RoomTab = "party" | "chat" | "call";
 
 export interface Preferences {
   notifyPresence: boolean;
@@ -22,6 +23,9 @@ export interface SessionState {
   inviteCode: string | null;
   endReason: EndReason | null;
   endedRoomName: string | null;
+  activeTab: RoomTab;
+  chatMessages: ChatMessage[];
+  unreadChatCount: number;
 }
 
 type Action =
@@ -34,7 +38,9 @@ type Action =
   | { type: "event"; event: RoomEvent }
   | { type: "set_playback"; playback: PlaybackState }
   | { type: "set_name"; name: string }
-  | { type: "set_prefs"; prefs: Partial<Preferences> };
+  | { type: "set_prefs"; prefs: Partial<Preferences> }
+  | { type: "set_tab"; tab: RoomTab }
+  | { type: "set_chat_history"; messages: ChatMessage[] };
 
 const initialState: SessionState = {
   screen: "home",
@@ -48,6 +54,9 @@ const initialState: SessionState = {
   inviteCode: null,
   endReason: null,
   endedRoomName: null,
+  activeTab: "party",
+  chatMessages: [],
+  unreadChatCount: 0,
 };
 
 function reducer(state: SessionState, action: Action): SessionState {
@@ -102,6 +111,14 @@ function reducer(state: SessionState, action: Action): SessionState {
       return { ...state, displayName: action.name };
     case "set_prefs":
       return { ...state, prefs: { ...state.prefs, ...action.prefs } };
+    case "set_tab":
+      return {
+        ...state,
+        activeTab: action.tab,
+        unreadChatCount: action.tab === "chat" ? 0 : state.unreadChatCount,
+      };
+    case "set_chat_history":
+      return { ...state, chatMessages: action.messages };
     case "event":
       return applyEvent(state, action.event);
   }
@@ -153,6 +170,12 @@ function applyEvent(state: SessionState, event: RoomEvent): SessionState {
       };
     case "playback":
       return { ...state, room: { ...room, playback: event.playback } };
+    case "chat_message":
+      return {
+        ...state,
+        chatMessages: [...state.chatMessages, event.message],
+        unreadChatCount: state.activeTab === "chat" ? 0 : state.unreadChatCount + 1,
+      };
     case "room_ended":
       return reducer(state, { type: "exit_room", reason: "host_ended" });
   }
@@ -200,7 +223,8 @@ export function useTogetherTube(service: RoomService, callbacks: SessionCallback
     return () => clearTimeout(t);
   }, [state.connection, roomCode, emit]);
 
-  const isHost = !!state.room && state.room.hostId === SELF_ID;
+  const myId = (service as any).getUserId ? (service as any).getUserId() : SELF_ID;
+  const isHost = !!state.room && state.room.hostId === myId;
 
   const actions = useMemo(
     () => ({
@@ -224,11 +248,12 @@ export function useTogetherTube(service: RoomService, callbacks: SessionCallback
         dispatch({ type: "exit_room", reason: "you_ended" });
       },
       /** Host only. */
-      setPlayback: (next: { isPlaying?: boolean | undefined; seekBy?: number }) => {
+      setPlayback: (next: { isPlaying?: boolean | undefined; seekBy?: number; positionSec?: number }) => {
         const room = stateRef.current.room;
-        if (!room || room.hostId !== SELF_ID || !room.video) return;
-        const pos = currentPosition(room.playback, room.video.durationSec);
-        const positionSec = Math.min(room.video.durationSec, Math.max(0, pos + (next.seekBy ?? 0)));
+        if (!room || room.hostId !== myId || !room.video) return;
+        const currentPos = currentPosition(room.playback, room.video.durationSec);
+        let targetPos = typeof next.positionSec === "number" ? next.positionSec : currentPos + (next.seekBy ?? 0);
+        const positionSec = Math.min(room.video.durationSec, Math.max(0, targetPos));
         const playback: PlaybackState = {
           isPlaying: next.isPlaying ?? room.playback.isPlaying,
           positionSec,
@@ -237,6 +262,11 @@ export function useTogetherTube(service: RoomService, callbacks: SessionCallback
         dispatch({ type: "set_playback", playback });
         void service.updatePlayback(room.code, playback);
       },
+      setActiveTab: (tab: RoomTab) => dispatch({ type: "set_tab", tab }),
+      sendChat: async (text: string) => {
+        if (service.sendChat) await service.sendChat(text);
+      },
+      setChatHistory: (messages: ChatMessage[]) => dispatch({ type: "set_chat_history", messages }),
       reconnect: () =>
         dispatch({ type: "event", event: { type: "connection", state: "reconnecting" } }),
       setDisplayName: (name: string) => dispatch({ type: "set_name", name }),
@@ -244,10 +274,10 @@ export function useTogetherTube(service: RoomService, callbacks: SessionCallback
       /** Entry point for live transports and the prototype controls. */
       emit,
     }),
-    [service, emit],
+    [service, emit, myId],
   );
 
-  return { state, isHost, actions };
+  return { state, isHost, myId, actions, service };
 }
 
 export type TogetherTubeSession = ReturnType<typeof useTogetherTube>;

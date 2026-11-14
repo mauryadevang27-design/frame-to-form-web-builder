@@ -66,6 +66,15 @@ export class RoomError extends Error {
   }
 }
 
+export interface ChatMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderTone: AvatarTone;
+  text: string;
+  timestamp: number;
+}
+
 /**
  * Events a live transport pushes into the session. The prototype controls emit
  * the same events so the UI reacts identically once a real server exists.
@@ -77,6 +86,7 @@ export type RoomEvent =
   | { type: "host_presence"; online: boolean }
   | { type: "video_changed"; video: VideoInfo | null }
   | { type: "playback"; playback: PlaybackState }
+  | { type: "chat_message"; message: ChatMessage }
   | { type: "room_ended" };
 
 export type Screen = "home" | "create" | "join" | "invite" | "room" | "settings" | "ended";

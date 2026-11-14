@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TogetherTube</title>
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        width: 400px;
+        min-height: 600px;
+        background-color: #1a1625;
+        overflow: hidden;
+        user-select: none;
+      }
+      #root {
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body class="bg-background text-foreground">
+    <div id="root"></div>
+    <script type="module" src="/src/extension/popup.tsx"></script>
+  </body>
+</html>

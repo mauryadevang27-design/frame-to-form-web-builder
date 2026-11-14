@@ -1,4 +1,4 @@
-import type { PlaybackState, Room, RoomEvent, RoomPreview } from "../types";
+import type { ChatMessage, PlaybackState, Room, RoomEvent, RoomPreview } from "../types";
 
 export interface CreateRoomInput {
   name?: string | undefined;
@@ -21,4 +21,10 @@ export interface RoomService {
   updatePlayback(code: string, playback: PlaybackState): Promise<void>;
   /** Live room events (presence, playback, connection). Returns an unsubscribe fn. */
   subscribe(code: string, listener: (event: RoomEvent) => void): () => void;
+  /** Real-time chat */
+  sendChat?(text: string): Promise<void>;
+  getChatHistory?(): ChatMessage[];
+  /** WebRTC signaling */
+  sendSignal?(signal: unknown): void;
+  onSignal?(listener: (signal: unknown) => void): () => void;
 }
